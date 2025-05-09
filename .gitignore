@@ -1,0 +1,71 @@
+# Compiled Python files
+*.pyc
+__pycache__/
+*.o
+*.so
+*.orig
+
+# Distribution / build
+dist/
+build/
+*.egg-info/
+.cache/
+
+# Virtual environment
+# 可以根据你实际使用的虚拟环境目录名进行调整
+venv/
+.venv/
+env/
+.env/
+
+# Editors and IDEs
+.vscode/        # VS Code specific files
+.idea/          # JetBrains IDEs (PyCharm, etc.) specific files
+*.swp           # Vim swap files
+*~              # Backup files
+.#* # Emacs locks
+/.history/      # VS Code Local History
+
+# OS generated files
+.DS_Store       # macOS
+Thumbs.db       # Windows
+desktop.ini     # Windows
+
+# Testing and coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Project specific files (您可能需要根据实际情况调整或添加)
+# Database files (如果你使用 SQLite 等文件型数据库)
+*.db
+*.sqlite
+*.sqlite3
+
+# Log files
+logs/
+*.log
+
+# Uploaded files / media files
+# 存储用户上传文件或媒体文件的目录，通常不应该加入版本控制
+uploads/
+media/
+
+# Configuration files with secrets (非常重要!)
+# 包含敏感信息（如数据库密码、API 密钥）的配置文件绝对不应该提交到 Git 仓库
+# 请根据你实际存放敏感配置的文件名进行调整
+.env
+.env.*
+config.local.yaml
+settings.local.py
+*.secret
+*.key # 私钥文件
+*.pem # 证书文件
+
+# Uvicorn specific (通常不需要额外忽略，因为它不产生持续性文件)
+# 如果你将 Uvicorn 的日志输出到文件，请添加到 logs/ 规则中
+
+# FastAPI specific (通常不需要额外忽略)
