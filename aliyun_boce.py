@@ -322,7 +322,7 @@ def extract_table_data_from_page(page):
                 headers: headers, 
                 rows: rowsData
             };
-        """);
+        """)
         
         
         if not table_data or 'error' in table_data:
