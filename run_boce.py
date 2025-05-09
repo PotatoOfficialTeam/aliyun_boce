@@ -1,7 +1,5 @@
-import os
-import time
+
 import pandas as pd
-from glob import glob
 from aliyun_boce import scrape_aliyun_boce, clean_url
 
 def analyze_domain_availability(df):
@@ -111,90 +109,15 @@ def analyze_domain_availability(df):
         traceback.print_exc()
         return None
     
-def wait_for_download(domain, timeout=60):
-    """
-    等待拨测结果文件下载完成
-    
-    :param domain: 检测的域名
-    :param timeout: 超时时间（秒）
-    :return: 下载文件的完整路径或None（超时）
-    """
-    expected_filename = f"{domain}-http-result.xlsx"
-    download_dir = os.path.expanduser("~/Downloads")
-    start_time = time.time()
-    
-    print(f"等待下载文件: {expected_filename}")
-    
-    while time.time() - start_time < timeout:
-        # 查找匹配的文件
-        matching_files = glob(os.path.join(download_dir, expected_filename))
-        
-        if matching_files:
-            # 如果找到文件，等待2秒确保文件下载完成
-            time.sleep(2)
-            file_path = matching_files[0]
-            file_size = os.path.getsize(file_path)
-            print(f"文件已下载: {file_path} (大小: {file_size} 字节)")
-            return file_path
-        
-        # 每秒检查一次
-        time.sleep(1)
-    
-    print(f"等待下载超时，未找到文件: {expected_filename}")
-    return None
 
-def parse_boce_excel(file_path):
-    """
-    解析拨测结果Excel文件
-    
-    :param file_path: Excel文件路径
-    :return: 解析后的数据DataFrame
-    """
-    try:
-        print(f"正在解析Excel文件: {file_path}")
-        df = pd.read_excel(file_path)
-        
-        # 打印Excel的基本信息
-        print(f"Excel文件包含 {len(df)} 行数据和以下列:")
-        print(df.columns.tolist())
-        
-        # 打印前几行数据作为示例
-        print("\n数据预览:")
-        print(df.head())
-        
-        return df
-    except Exception as e:
-        print(f"解析Excel文件时出错: {e}")
-        return None
-    
-def clean_download_directory():
-    """清理下载目录中的旧拨测报告文件"""
-    download_dir = os.path.expanduser("~/Downloads")
-    try:
-        # 查找所有拨测报告文件
-        report_files = glob(os.path.join(download_dir, "*-http-result.xlsx"))
-        if report_files:
-            print(f"找到{len(report_files)}个旧报告文件，正在清理...")
-            for file in report_files:
-                try:
-                    os.remove(file)
-                    print(f"已删除: {file}")
-                except Exception as e:
-                    print(f"删除文件失败: {file}, 错误: {e}")
-        else:
-            print("下载目录中没有发现旧的报告文件")
-    except Exception as e:
-        print(f"清理下载目录时发生错误: {e}")
 
-def main(url_to_check):
+def run_boce(url_to_check):
     """
     执行完整的拨测流程：执行拨测、等待下载、解析文件
     
     :param url_to_check: 待检测的URL
     :return: 解析后的数据或None（如果任何步骤失败）
     """
-    # 清理下载目录中的旧报告文件
-    clean_download_directory()
     # 清理URL
     cleaned_url = clean_url(url_to_check)
     print(f"\n开始检测网址: {cleaned_url}")

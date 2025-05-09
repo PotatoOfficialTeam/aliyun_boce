@@ -14,7 +14,7 @@ from datetime import datetime
 load_dotenv()
 
 # 导入你现有的拨测模块
-from main import main as run_boce
+from run_boce import run_boce
 from aliyun_boce import clean_url
 
 # Redis客户端
