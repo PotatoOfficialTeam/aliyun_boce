@@ -190,12 +190,12 @@ async def main():
     github_token = os.environ.get("GITHUB_TOKEN")
     
     # 从环境变量获取并解析文件列表
-    github_files_str = os.environ.get("GITHUB_DOMAIN_FILES", '["wujie.json", "v2word.json"]')
+    github_files_str = os.environ.get("GITHUB_DOMAIN_FILES")
     try:
         github_files = json.loads(github_files_str)
     except json.JSONDecodeError:
         logger.error(f"无法解析GITHUB_DOMAIN_FILES环境变量: {github_files_str}，使用默认值")
-        github_files = ["wujie.json", "v2word.json"]
+        github_files = []
     
     # 获取刷新间隔（单位：秒）
     try:
