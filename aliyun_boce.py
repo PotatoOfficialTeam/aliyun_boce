@@ -21,27 +21,7 @@ def take_screenshot(page, name_prefix):
     except Exception as e:
         print(f"保存截图失败: {e}")
         return None
-def export_report_with_js(page):
-    """使用JavaScript点击Export Report按钮"""
-    try:
-        print("尝试使用JavaScript点击Export Report按钮...")
-        result = page.run_js("""
-            var buttons = document.querySelectorAll('button');
-            for(var i=0; i<buttons.length; i++) {
-                if(buttons[i].innerText.indexOf('Export') !== -1 || buttons[i].innerText.indexOf('Report') !== -1) {
-                    buttons[i].click();
-                    return true;
-                }
-            }
-            return false;
-        """)
-        print(f"JavaScript执行结果: {result}")
-        time.sleep(3)  # 等待可能的对话框
-        take_screenshot(page, "after_js_click_export")
-        return result
-    except Exception as e:
-        print(f"使用JavaScript点击Export Report按钮失败: {e}")
-        return False
+    
 def open_boce_website(page):
     """打开阿里云拨测网站"""
     try:
@@ -161,96 +141,12 @@ def click_ok_button(page):
     take_screenshot(page, "all_button_attempts_failed")
     return False
 
-def click_export_button(page, export_button):
-    """点击Export Report按钮导出报告"""
-    try:
-        take_screenshot(page, "before_export_report")
-        export_button.click()
-        print("已点击Export Report按钮")
-        time.sleep(3)  # 等待导出对话框出现
-        take_screenshot(page, "after_export_report")
-        return True
-    except Exception as e:
-        print(f"尝试点击Export Report按钮失败: {e}")
-        take_screenshot(page, "export_button_click_failed")
-        
-        # 尝试使用JavaScript点击
-        return export_report_with_js(page)
-
-def click_export_button_with_multiple_attempts(page, button):
-    """尝试多种方法点击Export Report按钮"""
-    if not button:
-        print("Export Report按钮不存在，无法点击")
-        return False
-    
-    # 1. 尝试直接点击
-    try:
-        take_screenshot(page, "before_direct_click_export")
-        button.click()
-        print("已直接点击Export Report按钮")
-        take_screenshot(page, "after_direct_click_export")
-        time.sleep(2)  # 等待可能的下载对话框
-        return True
-    except Exception as e:
-        print(f"直接点击Export Report按钮失败: {e}")
-    
-    # 2. 尝试先右键点击再左键点击
-    try:
-        take_screenshot(page, "before_right_click_export")
-        button.right_click()
-        time.sleep(1)
-        button.click()
-        print("已通过右键后左键方式点击Export Report按钮")
-        take_screenshot(page, "after_right_click_export")
-        time.sleep(2)
-        return True
-    except Exception as e:
-        print(f"右键后左键点击Export Report按钮失败: {e}")
-    
-    # 3. 尝试使用JavaScript点击
-    try:
-        # 先给按钮添加唯一ID
-        page.run_js("""
-            arguments[0].id = 'export-report-button';
-        """, button)
-        
-        take_screenshot(page, "before_js_click_export")
-        js_result = page.run_js("""
-            var btn = document.getElementById('export-report-button');
-            if (btn) {
-                btn.click();
-                return true;
-            }
-            return false;
-        """)
-        
-        print(f"JavaScript点击Export Report按钮结果: {js_result}")
-        take_screenshot(page, "after_js_click_export")
-        time.sleep(2)
-        
-        if js_result:
-            return True
-    except Exception as e:
-        print(f"使用JavaScript点击Export Report按钮失败: {e}")
-    
-    # 4. 尝试使用键盘快捷键Ctrl+E (假设可能有这样的快捷键)
-    try:
-        take_screenshot(page, "before_hotkey_export")
-        page.keyboard.press_key(['ctrl', 'e'])
-        print("已尝试使用Ctrl+E快捷键导出")
-        take_screenshot(page, "after_hotkey_export")
-        time.sleep(2)
-        return True
-    except Exception as e:
-        print(f"使用快捷键导出失败: {e}")
-    
-    return False
 
 def wait_for_export_button_clickable(page, max_wait_time=180):
     """等待Export Report按钮出现并且变为可点击状态"""
     print("等待Export Report按钮出现并变为可点击状态...")
     
-    wait_interval = 120  # 每5秒检查一次
+    wait_interval = 5  # 每5秒检查一次
     start_time = time.time()
     export_button = None
     
@@ -274,8 +170,6 @@ def wait_for_export_button_clickable(page, max_wait_time=180):
                         disabled = 'disabled' in cls or 'ant-btn-disabled' in cls
                     except:
                         pass
-                    
-                    print(f"  按钮 {i+1} 文本: '{btn_text}', 禁用状态: {disabled}")
                 except:
                     print(f"  按钮 {i+1} 无法获取文本")
         except Exception as e:
@@ -361,68 +255,126 @@ def wait_for_export_button_clickable(page, max_wait_time=180):
     
     return None
 
-def click_export_button(page, button):
-    """尝试点击Export Report按钮，只在按钮可点击时点击"""
-    if not button:
-        print("Export Report按钮不存在，无法点击")
-        return False
+def extract_table_data_from_page(page):
+    """直接从网页中提取表格数据而不是下载Excel文件"""
+    print("开始从网页直接提取表格数据...")
+    take_screenshot(page, "before_extract_table")
     
-    # 先检查按钮是否可点击
-    is_clickable = False
     try:
-        js_check = page.run_js("""
-            var btn = arguments[0];
-            var isDisabled = btn.disabled || btn.getAttribute('aria-disabled') === 'true' || 
-                             btn.classList.contains('disabled') || 
-                             btn.classList.contains('ant-btn-disabled');
-            var rect = btn.getBoundingClientRect();
-            var isVisible = rect.width > 0 && rect.height > 0;
-            var style = window.getComputedStyle(btn);
-            var isInteractive = style.pointerEvents !== 'none' && parseFloat(style.opacity) > 0.5;
+        # 使用JavaScript提取表格数据
+        table_data = page.run_js("""
+            // 定义映射关系，将表格列名映射到Excel文件中的列名
+            const columnMapping = {
+                '探测点': 'Detection Point',
+                '解析结果IP': 'Analysis Result IP',
+                '状态': 'Status',
+                '总响应时间': 'Total Response Time',
+                '解析时间': 'Analysis Time',
+                '建连时间': 'Connection Time',
+                'SSL时间': 'SSL Time',
+                '首包时间': 'First Packet Time',
+                '下载时间': 'Download Time'
+                // 可能需要根据实际情况添加更多映射
+            };
+            
+            // 获取表格所有行
+            const tableRows = Array.from(document.querySelectorAll('table tr, .ant-table-row, [role="row"]'));
+            if (!tableRows || tableRows.length <= 1) {
+                // 使用备用选择器尝试
+                const altRows = Array.from(document.querySelectorAll('.ant-table-tbody tr, div[role="rowgroup"] > div'));
+                if (altRows.length > 0) {
+                    tableRows.push(...altRows);
+                } else {
+                    return { error: "找不到表格行" };
+                }
+            }
+            
+            // 尝试查找表头
+            let headerCells = document.querySelectorAll('th, .ant-table-cell, [role="columnheader"]');
+            if (!headerCells || headerCells.length === 0) {
+                // 查找表头失败，尝试使用第一行作为表头
+                if (tableRows.length > 0) {
+                    headerCells = tableRows[0].querySelectorAll('td, th, .ant-table-cell');
+                    tableRows.shift(); // 移除第一行，因为它被当作表头
+                }
+            }
+            
+            // 提取表头文本
+            const headers = Array.from(headerCells).map(cell => {
+                const text = cell.innerText.trim();
+                // 使用映射转换列名
+                return columnMapping[text] || text;
+            });
+            
+            // 提取数据行
+            const rowsData = [];
+            for (const row of tableRows) {
+                const cells = row.querySelectorAll('td, .ant-table-cell, [role="cell"]');
+                if (cells && cells.length > 0) {
+                    rowsData.push(Array.from(cells).map(cell => cell.innerText.trim()));
+                }
+            }
+            
+            // 打印一些调试信息
+            console.log(`找到 ${headers.length} 列表头和 ${rowsData.length} 行数据`);
             
             return {
-                isClickable: !isDisabled && isVisible && isInteractive,
-                isDisabled: isDisabled,
-                isVisible: isVisible,
-                isInteractive: isInteractive
+                headers: headers, 
+                rows: rowsData
             };
-        """, button)
+        """);
         
-        print(f"Export Report按钮状态检查: {js_check}")
+        print(f"表格数据提取结果: {table_data}")
         
-        if js_check and js_check.get('isClickable'):
-            is_clickable = True
-            print("Export Report按钮可点击")
-        else:
-            print("Export Report按钮不可点击，不尝试点击")
-            return False
+        if not table_data or 'error' in table_data:
+            print(f"提取表格数据失败: {table_data.get('error', '未知错误')}")
+            # 尝试打印页面HTML帮助调试
+            html_snippet = page.html[:2000]  # 获取页面前2000个字符
+            print(f"页面HTML片段: {html_snippet}")
+            return None
+        
+        # 将提取的数据转换为DataFrame
+        import pandas as pd
+        
+        headers = table_data.get('headers', [])
+        rows = table_data.get('rows', [])
+        
+        if not headers or not rows:
+            print("提取的表格没有表头或数据行")
+            return None
+        
+        # 处理列数不匹配的情况
+        max_cols = max(len(headers), max(len(row) for row in rows))
+        if len(headers) < max_cols:
+            headers.extend([f'未命名列{i}' for i in range(len(headers), max_cols)])
+        
+        # 确保所有行有相同的列数
+        for i, row in enumerate(rows):
+            if len(row) < max_cols:
+                rows[i] = row + [''] * (max_cols - len(row))
+            elif len(row) > max_cols:
+                rows[i] = row[:max_cols]
+        
+        # 创建DataFrame
+        df = pd.DataFrame(rows, columns=headers)
+        print(f"成功创建DataFrame，包含{len(df)}行和以下列:")
+        print(df.columns.tolist())
+        print("\n数据预览:")
+        print(df.head())
+        
+        return df
+    
     except Exception as e:
-        print(f"检查按钮可点击状态失败: {e}")
-        return False
+        print(f"从网页提取表格数据时出错: {e}")
+        take_screenshot(page, "extract_table_error")
+        return None
     
-    # 如果按钮可点击，尝试点击
-    if is_clickable:
-        try:
-            take_screenshot(page, "before_click_export")
-            button.click()
-            print("已点击Export Report按钮")
-            take_screenshot(page, "after_click_export")
-            time.sleep(5)  # 等待可能的下载对话框
-            print("已点击Export Report按钮")
-            take_screenshot(page, "after_click_export")
-            return True
-        except Exception as e:
-            print(f"点击Export Report按钮失败: {e}")
-            return False
-    
-    return False
-
 def scrape_aliyun_boce(target_url: str):
     """
     使用DrissionPage访问阿里云网站拨测工具并抓取HTTP检测结果。
     
     :param target_url: 需要检测的网址
-    :return: 是否成功导出报告
+    :return: 提取的数据DataFrame或None
     """
     
     # 创建ChromiumOptions对象并配置参数
@@ -455,30 +407,30 @@ def scrape_aliyun_boce(target_url: str):
             raise Exception("无法点击OK按钮")
         
         # 5. 等待Export Report按钮出现并变为可点击
+        # 这一步保留，用于判断页面是否完全加载
         export_button = wait_for_export_button_clickable(page)
         
-        # 6. 点击Export Report按钮
-        if export_button:
-            success = click_export_button(page, export_button)
-            if success:
-                print("成功点击Export Report按钮")
-                return True
-            else:
-                print("Export Report按钮点击失败或不可点击")
-                # 保存最终状态的截图
-                take_screenshot(page, "export_button_click_failed")
-                return False
+        if not export_button:
+            print("未找到可点击的Export Report按钮，无法确认页面加载完成")
+            take_screenshot(page, "no_clickable_export_button")
+            return None
+            
+        print("Export Report按钮已变为可点击状态，页面已完全加载")
+        take_screenshot(page, "page_fully_loaded")
+        
+        # 6. 不点击Export按钮，直接从网页提取表格数据
+        df = extract_table_data_from_page(page)
+        if df is not None:
+            print("成功从网页提取表格数据")
+            return df
         else:
-            # 如果找不到Export Report按钮，保存页面截图
-            print("未找到可点击的Export Report按钮，保存页面截图...")
-            screenshot_path = take_screenshot(page, "no_clickable_export_button")
-            print(f"已保存结果页面截图: {screenshot_path}")
-            return False
+            print("从网页提取表格数据失败")
+            return None
     
     except Exception as e:
         print(f"在爬虫执行过程中发生意外错误: {e}")
         take_screenshot(page, "critical_error")
-        return False
+        return None
     
     finally:
         # 最终截图，无论成功还是失败

@@ -3,6 +3,7 @@ import time
 import pandas as pd
 from glob import glob
 from aliyun_boce import scrape_aliyun_boce, clean_url
+
 def analyze_domain_availability(df):
     """
     分析域名可用性
@@ -11,43 +12,55 @@ def analyze_domain_availability(df):
     :return: 分析结果字典
     """
     try:
+        # 确认DataFrame列名
+        print("DataFrame列名:", df.columns.tolist())
+        
+        # 将Status列转换为整数类型 (可能是字符串)
+        df['Status'] = pd.to_numeric(df['Status'], errors='coerce')
+        
         # 1. 计算基本统计信息
         total_checks = len(df)
+        # 状态码200表示成功，不是失败！
         success_checks = len(df[df['Status'] == 200])
         success_rate = (success_checks / total_checks) * 100 if total_checks > 0 else 0
         
         # 2. 计算响应时间统计
-        # 先将时间字符串转换为数值（去掉'ms'并转为整数）
-        df['Response_Time_ms'] = df['Total Response Time'].str.replace('ms', '').astype(int)
+        # 处理响应时间，将'-'替换为NaN，将'ms'去掉，然后转为数值
+        df['Response_Time_ms'] = df['Total Response Time'].str.replace('ms', '')
+        # 将'-'或空字符串替换为NaN
+        df['Response_Time_ms'] = df['Response_Time_ms'].replace(['-', ''], float('nan'))
+        # 转换为数值类型
+        df['Response_Time_ms'] = pd.to_numeric(df['Response_Time_ms'], errors='coerce')
         
-        # 计算平均、最大、最小响应时间
+        # 计算平均、最大、最小响应时间 - 状态码200表示成功！
         avg_response_time = df[df['Status'] == 200]['Response_Time_ms'].mean() if success_checks > 0 else float('nan')
         max_response_time = df[df['Status'] == 200]['Response_Time_ms'].max() if success_checks > 0 else float('nan')
         min_response_time = df[df['Status'] == 200]['Response_Time_ms'].min() if success_checks > 0 else float('nan')
         
-        # 查找最高延迟的地区 - 更安全的方式
+        # 查找最高延迟的地区 - 更安全的方式，注意状态码200是成功！
         max_latency_area = "N/A"
         max_latency_value = float('nan')
         min_latency_area = "N/A"
         min_latency_value = float('nan')
         
         if success_checks > 0:
-            # 只筛选成功的行
-            success_df = df[df['Status'] == 200].copy()
+            # 只筛选成功的行并且Response_Time_ms不是NaN的行
+            success_df = df[(df['Status'] == 200) & df['Response_Time_ms'].notna()].copy()
             
-            # 对筛选后的DataFrame进行排序，获取最高和最低值
-            max_row = success_df.sort_values('Response_Time_ms', ascending=False).iloc[0]
-            min_row = success_df.sort_values('Response_Time_ms', ascending=True).iloc[0]
-            
-            max_latency_area = max_row['Detection Point']
-            max_latency_value = max_row['Response_Time_ms']
-            min_latency_area = min_row['Detection Point']
-            min_latency_value = min_row['Response_Time_ms']
+            if not success_df.empty:
+                # 对筛选后的DataFrame进行排序，获取最高和最低值
+                max_row = success_df.sort_values('Response_Time_ms', ascending=False).iloc[0]
+                min_row = success_df.sort_values('Response_Time_ms', ascending=True).iloc[0]
+                
+                max_latency_area = max_row['Detection Point']
+                max_latency_value = max_row['Response_Time_ms']
+                min_latency_area = min_row['Detection Point']
+                min_latency_value = min_row['Response_Time_ms']
         
-        # 3. 分析错误状态码分布
+        # 3. 分析错误状态码分布 - 非200的状态码才是错误
         error_status_counts = df[df['Status'] != 200]['Status'].value_counts().to_dict()
         
-        # 4. 分析不可用地区
+        # 4. 分析不可用地区 - 非200的状态码才表示不可用
         unavailable_areas = df[df['Status'] != 200][['Detection Point', 'Status']].values.tolist()
         
         # 5. 按运营商分组分析
@@ -55,12 +68,10 @@ def analyze_domain_availability(df):
         df['ISP'] = df['Detection Point'].str.extract(r'China-(Mobile|Telecom|Unicom)')
         isp_analysis = {}
         
-        for isp in df['ISP'].unique():
-            if pd.isna(isp):
-                continue
-                
+        for isp in df['ISP'].dropna().unique():
             isp_df = df[df['ISP'] == isp]
             isp_total = len(isp_df)
+            # 状态码200表示成功！
             isp_success = len(isp_df[isp_df['Status'] == 200])
             isp_success_rate = (isp_success / isp_total) * 100 if isp_total > 0 else 0
             
@@ -98,7 +109,8 @@ def analyze_domain_availability(df):
         print(f"分析域名可用性时出错: {e}")
         import traceback
         traceback.print_exc()
-        return None     
+        return None
+    
 def wait_for_download(domain, timeout=60):
     """
     等待拨测结果文件下载完成
@@ -187,24 +199,18 @@ def main(url_to_check):
     cleaned_url = clean_url(url_to_check)
     print(f"\n开始检测网址: {cleaned_url}")
     
-    # 1. 执行拨测
-    success = scrape_aliyun_boce(cleaned_url)
-    # success = 1
-    # success = 1
-    if not success:
-        print("拨测失败，无法获取报告")
+    # 执行拨测并直接获取数据
+    result_data = scrape_aliyun_boce(cleaned_url)
+    
+    # 检查result_data是否为DataFrame类型并且不为空
+    if result_data is None or (hasattr(result_data, 'empty') and result_data.empty):
+        print("拨测失败，无法获取数据")
         return None
     
-    # 2. 等待文件下载
-    file_path = wait_for_download(cleaned_url)
-    if not file_path:
-        print("未能找到下载的拨测结果文件")
-        return None
-    
-    # 3. 解析Excel文件
-    result_data = parse_boce_excel(file_path)
-    if result_data is None:
-        print("解析拨测结果文件失败")
+    # 分析域名可用性
+    analysis_result = analyze_domain_availability(result_data)
+    if analysis_result is None:
+        print("分析域名可用性失败")
         return None
     
     # 4. 分析域名可用性

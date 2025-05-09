@@ -78,7 +78,6 @@ async def fetch_domains_from_github(github_url, github_files, github_token=None)
                 logger.error(f"获取域名列表失败: {e}")
     
     return domains
-
 async def test_domain(domain_info):
     """对单个域名执行拨测"""
     domain = domain_info.get("url")
@@ -94,19 +93,25 @@ async def test_domain(domain_info):
     try:
         # 执行拨测（同步操作）
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, run_boce, cleaned_domain)
+        result_data = await loop.run_in_executor(None, run_boce, cleaned_domain)
         
-        if result:
-            # 添加域名基本信息
-            result["domain"] = cleaned_domain
-            result["brand"] = brand
-            result["name"] = name
-            result["timestamp"] = int(time.time())
-            
-            logger.info(f"域名 {cleaned_domain} 拨测完成")
-            return result
+        # 检查结果
+        if result_data is not None:
+            # 检查分析结果是否是字典（分析结果）而不是DataFrame
+            if isinstance(result_data, dict):
+                # 已经是分析结果字典，添加域名信息
+                result_data["domain"] = cleaned_domain
+                result_data["brand"] = brand
+                result_data["name"] = name
+                result_data["timestamp"] = int(time.time())
+                
+                logger.info(f"域名 {cleaned_domain} 拨测完成")
+                return result_data
+            else:
+                logger.error(f"域名 {cleaned_domain} 拨测返回了意外的数据类型: {type(result_data)}")
+                return None
         else:
-            logger.error(f"域名 {cleaned_domain} 拨测失败")
+            logger.error(f"域名 {cleaned_domain} 拨测失败，结果为None")
             return None
     except Exception as e:
         logger.error(f"拨测 {domain} 时发生错误: {e}")
