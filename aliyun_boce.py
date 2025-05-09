@@ -5,20 +5,19 @@ import os
 def ensure_screenshot_dir():
     """确保截图保存目录存在"""
     screenshot_dir = "screenshots"
-    # if not os.path.exists(screenshot_dir):
-    #     os.makedirs(screenshot_dir)
+    if not os.path.exists(screenshot_dir):
+        os.makedirs(screenshot_dir)
     return screenshot_dir
 
 def take_screenshot(page, name_prefix):
     """获取页面截图并保存"""
     try:
-        # screenshot_dir = ensure_screenshot_dir()
-        # timestamp = time.strftime('%Y%m%d_%H%M%S')
-        # screenshot_path = os.path.join(screenshot_dir, f"{name_prefix}_{timestamp}.png")
-        # page.get_screenshot(screenshot_path)
-        # print(f"截图已保存至: {screenshot_path}")
-        # return 
-        return ''
+        screenshot_dir = ensure_screenshot_dir()
+        timestamp = time.strftime('%Y%m%d_%H%M%S')
+        screenshot_path = os.path.join(screenshot_dir, f"{name_prefix}_{timestamp}.png")
+        page.get_screenshot(screenshot_path)
+        print(f"截图已保存至: {screenshot_path}")
+        return screenshot_path
     except Exception as e:
         print(f"保存截图失败: {e}")
         return None
