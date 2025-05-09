@@ -1,5 +1,4 @@
 import time
-from fastapi import logger
 import redis
 from redis.exceptions import ConnectionError, TimeoutError
 import logging
@@ -8,6 +7,7 @@ import backoff  # 推荐安装这个库来处理重试逻辑
 # Redis连接池
 redis_pool = None
 redis_client = None
+logger = logging.getLogger("redis_opt")
 
 # 创建Redis客户端的函数(使用backoff库进行指数退避重试)
 @backoff.on_exception(backoff.expo, 
