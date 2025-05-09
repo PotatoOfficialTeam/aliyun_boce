@@ -1,4 +1,5 @@
 import time
+from fastapi import logger
 import redis
 from redis.exceptions import ConnectionError, TimeoutError
 import logging
@@ -32,7 +33,7 @@ def get_redis_client():
         redis_pool = redis.ConnectionPool(
             host='localhost', 
             port=6379, 
-            db=0,
+            db=5,
             socket_timeout=5,
             socket_connect_timeout=5,
             retry_on_timeout=True,
