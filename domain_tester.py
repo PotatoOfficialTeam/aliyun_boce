@@ -25,8 +25,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("domain_tester.log"),
-        logging.StreamHandler()
+        logging.StreamHandler()  # 只保留标准输出，supervisor会处理日志存储
     ]
 )
 logger = logging.getLogger("domain_tester")
