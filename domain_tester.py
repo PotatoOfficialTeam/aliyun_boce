@@ -14,6 +14,7 @@ from datetime import datetime
 load_dotenv()
 
 # 导入你现有的拨测模块
+from redis_opt import redis_operation
 from run_boce import run_boce
 from aliyun_boce import clean_url
 
@@ -116,7 +117,8 @@ async def test_domain(domain_info):
         logger.error(f"拨测 {domain} 时发生错误: {e}")
         return None
 
-def save_result_to_redis(result):
+@redis_operation
+def save_result_to_redis(client, result):
     """将拨测结果保存到Redis"""
     if not result or "domain" not in result:
         return False
@@ -132,19 +134,19 @@ def save_result_to_redis(result):
         # 1. 保存域名拨测结果
         redis_key = f"domain_test:{domain}"
         # 使用自定义编码器处理numpy类型
-        redis_client.setex(redis_key, 86400, json.dumps(result, cls=NumpyEncoder))  # 24小时过期
+        client.setex(redis_key, 86400, json.dumps(result, cls=NumpyEncoder))  # 24小时过期
         
         # 2. 更新品牌域名索引
         if brand:
             # 获取该品牌现有的所有域名拨测结果
             brand_domains = []
             brand_pattern = f"domain_test:*"
-            for key in redis_client.scan_iter(match=brand_pattern):
+            for key in client.scan_iter(match=brand_pattern):
                 key_str = key.decode('utf-8')
                 if key_str == "domain_test:metadata" or key_str.startswith("domain_test:brand:"):
                     continue  # 跳过元数据和品牌索引键
                     
-                domain_data = redis_client.get(key)
+                domain_data = client.get(key)
                 if domain_data:
                     try:
                         domain_obj = json.loads(domain_data)
@@ -169,20 +171,20 @@ def save_result_to_redis(result):
                         "success_rate": d.get("success_rate", 0)
                     })
             
-            redis_client.setex(brand_key, 86400, json.dumps(brand_summary, cls=NumpyEncoder))
+            client.setex(brand_key, 86400, json.dumps(brand_summary, cls=NumpyEncoder))
         
         # 3. 更新拨测元数据
         metadata = {
             "last_test_time": int(time.time()),
-            "domain_count": len(list(redis_client.scan_iter(match="domain_test:*"))) - 
-                          len(list(redis_client.scan_iter(match="domain_test:brand:*"))) - 1
+            "domain_count": len(list(client.scan_iter(match="domain_test:*"))) - 
+                          len(list(client.scan_iter(match="domain_test:brand:*"))) - 1
         }
-        redis_client.set("domain_test:metadata", json.dumps(metadata))
+        client.set("domain_test:metadata", json.dumps(metadata))
         
         logger.info(f"域名 {domain} 拨测结果已保存到Redis")
         return True
     except Exception as e:
-        logger.error(f"保存拨测结果到Redis失败: {e}", exc_info=True)  # 添加详细错误信息
+        logger.error(f"保存拨测结果到Redis失败: {e}", exc_info=True)
         return False
     
 async def main():

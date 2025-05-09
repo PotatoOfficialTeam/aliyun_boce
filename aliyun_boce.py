@@ -324,7 +324,6 @@ def extract_table_data_from_page(page):
             };
         """);
         
-        print(f"表格数据提取结果: {table_data}")
         
         if not table_data or 'error' in table_data:
             print(f"提取表格数据失败: {table_data.get('error', '未知错误')}")
