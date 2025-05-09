@@ -430,8 +430,8 @@ def scrape_aliyun_boce(target_url: str):
     options.headless = True  # 设置为无头模式
     options.set_argument('--no-sandbox')
     options.set_argument('--disable-dev-shm-usage')
-    options.set_argument('--headless=new')
-    options.set_argument('--window-size=1920,1080')  # 设置较高的分辨率
+    # options.set_argument('--headless=new')
+    # options.set_argument('--window-size=1920,1080')  # 设置较高的分辨率
     
     # 创建ChromiumPage对象
     page = ChromiumPage(options)
