@@ -407,7 +407,9 @@ def click_export_button(page, button):
             button.click()
             print("已点击Export Report按钮")
             take_screenshot(page, "after_click_export")
-            time.sleep(2)  # 等待可能的下载对话框
+            time.sleep(5)  # 等待可能的下载对话框
+            print("已点击Export Report按钮")
+            take_screenshot(page, "after_click_export")
             return True
         except Exception as e:
             print(f"点击Export Report按钮失败: {e}")
