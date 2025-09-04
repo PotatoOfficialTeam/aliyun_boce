@@ -1,14 +1,15 @@
+import os
 import time
 import redis
 from redis.exceptions import ConnectionError, TimeoutError
-import logging
-import backoff  # 推荐安装这个库来处理重试逻辑
+import backoff
+
+from logging_config import setup_logging  # 推荐安装这个库来处理重试逻辑
 
 # Redis连接池
 redis_pool = None
 redis_client = None
-logger = logging.getLogger("redis_opt")
-
+logger = setup_logging("domain_tester")
 # 创建Redis客户端的函数(使用backoff库进行指数退避重试)
 @backoff.on_exception(backoff.expo, 
                      (ConnectionError, TimeoutError),
@@ -28,18 +29,19 @@ def get_redis_client():
             logger.warning("现有Redis连接无效，尝试重新建立连接...")
             redis_client = None
     
-    # 创建连接池(如果还没有)
-    if redis_pool is None:
-        redis_pool = redis.ConnectionPool(
-            host='localhost', 
-            port=6379, 
-            db=5,
-            socket_timeout=5,
-            socket_connect_timeout=5,
-            retry_on_timeout=True,
-            health_check_interval=30
-        )
-    
+    redis_host = os.environ.get('REDIS_HOST', 'redis')  # 使用Docker服务名
+    redis_port = int(os.environ.get('REDIS_PORT', 6379))
+    redis_db = int(os.environ.get('REDIS_DB', 5))
+
+    redis_pool = redis.ConnectionPool(
+        host=redis_host, 
+        port=redis_port, 
+        db=redis_db,
+        socket_timeout=5,
+        socket_connect_timeout=5,
+        retry_on_timeout=True,
+        health_check_interval=30
+    )
     # 创建客户端
     redis_client = redis.Redis(connection_pool=redis_pool)
     

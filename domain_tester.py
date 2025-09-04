@@ -8,8 +8,7 @@ import numpy as np
 import redis
 import time
 import httpx
-from datetime import datetime
-
+from logging_config import setup_logging
 # 加载环境变量
 load_dotenv()
 
@@ -22,14 +21,8 @@ from aliyun_boce import clean_url
 redis_client = redis.Redis(host='localhost', port=6379, db=0)
 
 # 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler()  # 只保留标准输出，supervisor会处理日志存储
-    ]
-)
-logger = logging.getLogger("domain_tester")
+
+logger = setup_logging("domain_tester")
 
 class NumpyEncoder(json.JSONEncoder):
     """处理numpy数据类型的JSON编码器"""
@@ -57,22 +50,40 @@ async def fetch_domains_from_github(github_url, github_files, github_token=None)
                 response.raise_for_status()
                 
                 data = response.json()
-                # 处理返回的域名数据
-                if isinstance(data, list):
-                    file_domains = data
-                elif isinstance(data, dict) and "domains" in data:
-                    file_domains = data["domains"]
+                
+                # 处理新的JSON格式，只处理panels部分
+                if isinstance(data, dict) and "panels" in data:
+                    panels = data["panels"]
+                    # 遍历每个品牌（字段名）
+                    for brand_name, brand_domains in panels.items():
+                        if isinstance(brand_domains, list) and len(brand_domains) > 0:
+                            # 只取每个品牌的第一个域名
+                            first_domain = brand_domains[0]
+                            domain_info = {
+                                "url": first_domain.get("url"),
+                                "description": first_domain.get("description", ""),
+                                "brand": brand_name,
+                                "name": first_domain.get("description", first_domain.get("url", ""))
+                            }
+                            domains.append(domain_info)
+                            logger.info(f"添加品牌 {brand_name} 的域名: {first_domain.get('url')}")
                 else:
-                    continue
-                
-                # 提取品牌名称
-                brand = filename.split('.')[0]
-                
-                # 添加域名和品牌信息
-                for domain_data in file_domains:
-                    if "brand" not in domain_data:
-                        domain_data["brand"] = brand
-                    domains.append(domain_data)
+                    # 兼容旧格式
+                    if isinstance(data, list):
+                        file_domains = data
+                    elif isinstance(data, dict) and "domains" in data:
+                        file_domains = data["domains"]
+                    else:
+                        continue
+                    
+                    # 提取品牌名称
+                    brand = filename.split('.')[0]
+                    
+                    # 添加域名和品牌信息
+                    for domain_data in file_domains:
+                        if "brand" not in domain_data:
+                            domain_data["brand"] = brand
+                        domains.append(domain_data)
                     
             except Exception as e:
                 logger.error(f"获取域名列表失败: {e}")
@@ -198,10 +209,13 @@ async def main():
     # 从环境变量获取并解析文件列表
     github_files_str = os.environ.get("GITHUB_DOMAIN_FILES")
     try:
-        github_files = json.loads(github_files_str)
+        if github_files_str:
+            github_files = json.loads(github_files_str)
+        else:
+            github_files = ["domains.json"]
     except json.JSONDecodeError:
         logger.error(f"无法解析GITHUB_DOMAIN_FILES环境变量: {github_files_str}，使用默认值")
-        github_files = []
+        github_files = ["domains.json"]
     
     # 获取刷新间隔（单位：秒）
     try:
@@ -230,7 +244,7 @@ async def main():
                 
                 # 保存结果到Redis
                 if result:
-                    save_result_to_redis(result)
+                    save_result_to_redis(redis_client, result)
                 
                 # 每个域名拨测后短暂等待，避免过于频繁
                 await asyncio.sleep(5)
