@@ -1,0 +1,98 @@
+{
+    "panels": {
+        "wujie": [
+            {
+                "url": "https://apiwj250905.wj0001.cfd",
+                "description": "自动生成的域名 - wujie"
+            },
+            {
+                "url": "https://wujie.one",
+                "description": "主站（被墙） - 无界"
+            }
+        ],
+        "v2word": [
+            {
+                "url": "https://apiv20829.wujie001.info",
+                "description": "主Gitee项目域名 - V2    "
+            },
+            {
+                "url": "https://abcd168.icu",
+                "description": "备份或测试环境域名 - V2"
+            }
+        ]
+    },
+    "proxy": [
+        {
+            "url": "wujie123:wujie1233211234567@aliyun.gd.bgp.v2word.art:38769",
+            "description": "GCP-TW-caddy-34.xxxx.10.64",
+            "protocol": "http"
+        },
+        {
+            "url": "wujie123:wujie1233211234567@aliyun.gd.bgp.v2word.art:38769",
+            "description": "备用代理服务器",
+            "protocol": "http"
+        }
+    ],
+    "ws": [
+        {
+            "url": "wss://ma.wujie.lol/ws/",
+            "description": "GCP-TW-ws-34.xxxx.10.64"
+        },
+        {
+            "url": "wss://ma01.wujie.lol/ws/",
+            "description": "备用ws服务器"
+        }
+    ],
+    "update": [
+        {
+            "url": "https://update.45782234.xyz",
+            "description": "GCP-TW-up-34.xxxx.10.64"
+        },
+        {
+            "url": "https://update01.45782234.xyz",
+            "description": "备用更新服务器"
+        }
+    ],
+    "onlineSupport": [
+        {
+            "url": "https://chat.wujie.one",
+            "description": "在线客服API服务",
+            "apiBaseUrl": "https://chat.wujie.one",
+            "wsBaseUrl": "wss://chat.wujie.one"
+        }
+    ],
+    "subscription": {
+        "urls": [
+            {
+                "url": "https://www.jxfb.top",
+                "description": "reverse",
+                "endpoints": {
+                    "v1": {
+                        "path": "/api/v1/client/subscribe",
+                        "requiresToken": true,
+                        "method": "GET",
+                        "description": "V1 订阅接口，需要token参数"
+                    },
+                    "v2": {
+                        "path": "/api/v2/subscription-encrypt/{token}",
+                        "requiresToken": true,
+                        "method": "GET",
+                        "description": "V2 加密订阅接口，token在路径中"
+                    }
+                }
+            },
+            {
+                "url": "https://apiwj0819.wj0001.cfd",
+                "description": "origin",
+                "endpoints": {
+                    "v2": {
+                        "path": "/api/v2/subscription-encrypt/{token}",
+                        "requiresToken": true,
+                        "method": "GET",
+                        "description": "V2 加密订阅接口，token在路径中"
+                    }
+                }
+            }
+        ]
+    }
+}
