@@ -129,6 +129,44 @@ async def test_domain(domain_info):
         return None
 
 @redis_operation
+def cleanup_redis_cache(client, current_domains):
+    """清理Redis中不在当前域名列表中的缓存"""
+    try:
+        # 获取当前域名列表
+        current_domain_urls = {domain_info.get("url") for domain_info in current_domains if domain_info.get("url")}
+        current_domain_urls = {clean_url(url) for url in current_domain_urls}
+        
+        # 获取Redis中所有域名测试结果的键
+        domain_keys = []
+        for key in client.scan_iter(match="domain_test:*"):
+            key_str = key.decode('utf-8')
+            if key_str.startswith("domain_test:") and not key_str.startswith("domain_test:brand:") and key_str != "domain_test:metadata":
+                domain_keys.append(key_str)
+        
+        # 检查并删除不在当前域名列表中的缓存
+        deleted_count = 0
+        for key in domain_keys:
+            # 从键名中提取域名
+            domain = key.replace("domain_test:", "")
+            if domain not in current_domain_urls:
+                client.delete(key)
+                deleted_count += 1
+                logger.info(f"删除过期域名缓存: {domain}")
+        
+        # 清理品牌索引缓存，让它们重新生成
+        brand_keys = list(client.scan_iter(match="domain_test:brand:*"))
+        if brand_keys:
+            client.delete(*brand_keys)
+            logger.info(f"清理了 {len(brand_keys)} 个品牌索引缓存")
+        
+        logger.info(f"Redis缓存清理完成，删除了 {deleted_count} 个过期域名缓存")
+        return True
+        
+    except Exception as e:
+        logger.error(f"清理Redis缓存失败: {e}", exc_info=True)
+        return False
+
+@redis_operation
 def save_result_to_redis(client, result):
     """将拨测结果保存到Redis"""
     if not result or "domain" not in result:
@@ -237,14 +275,18 @@ async def main():
                 await asyncio.sleep(300)
                 continue
             
-            # 2. 顺序执行拨测
+            # 2. 清理Redis中过期的域名缓存，确保与仓库配置同步
+            logger.info("开始清理Redis缓存，确保与仓库配置同步")
+            cleanup_redis_cache(domains)
+            
+            # 3. 顺序执行拨测
             for domain_info in domains:
                 # 执行拨测
                 result = await test_domain(domain_info)
                 
                 # 保存结果到Redis
                 if result:
-                    save_result_to_redis(redis_client, result)
+                    save_result_to_redis(result)
                 
                 # 每个域名拨测后短暂等待，避免过于频繁
                 await asyncio.sleep(5)
