@@ -1,0 +1,52 @@
+apiwj250905.wj0001.cfd apiwj0902.wujie001.info apiwj0829A.wujie001.info apiwj0829.wujie001.info apiwj0819.wujie001.info apiwj0801.wujie001.info {
+	encode gzip zstd
+	reverse_proxy https://wujie.one {
+		header_up Host wujie.one
+		header_up X-Real-IP {remote_host}
+	}
+}
+
+api.wujie001.com {
+	@subscribe_only {
+		path /api/v1/client/subscribe
+		query token=*
+	}
+	handle @subscribe_only {
+		reverse_proxy https://wujie.one {
+			header_up Host wujie.one
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle {
+		respond "Access Denied" 403
+	}
+}
+apijxspeed.wj0001.cfd {
+	# 仅允许加密订阅路径，且必须有 token 参数
+	@encrypt_subscribe {
+		path /api/v2/subscription-encrypt/*
+	}
+
+	handle @encrypt_subscribe {
+		reverse_proxy https://wujie.one {
+			header_up Host wujie.one
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# 拒绝所有其他请求
+	handle {
+		respond "Access Denied" 403
+	}
+}
+apiv20829.wujie001.info apiv20819.wujie001.info apiv20801.wujie001.info v2word06.345342342.xyz v2word05.345342342.xyz {
+	encode gzip zstd
+	log {
+		output file /var/log/caddy/apiwj0801.log
+		format console
+	}
+	reverse_proxy https://v2word.art {
+		header_up Host v2word.art
+		header_up X-Real-IP {remote_host}
+	}
+}
